@@ -8,6 +8,10 @@ import shutil
 import os
 from PyQt5.QtCore import QRunnable, QThreadPool
 
+STORAGE_DIR = "./Storage"
+if not os.path.exists(STORAGE_DIR):
+    os.makedirs(STORAGE_DIR)
+
 class Worker(QRunnable):
     def __init__(self, function, *args, **kwargs):
         super().__init__()
@@ -23,32 +27,47 @@ class MainController(QMainWindow, Ui_MainWindow):
         super().__init__()
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
-        self.db = Database()
+        # self.db = Database()
+        self.thread_pool = QThreadPool.globalInstance()
 
         # connecting buttons to functions
-        self.ui.pushButton.clicked.connect(self.add_files)
-        self.ui.pushButton_3.clicked.connect(self.download_files)
-        self.ui.pushButton_2.clicked.connect(self.delete_files)
+        self.ui.pushButton.clicked.connect(self.addFile)
+        self.ui.pushButton_3.clicked.connect(self.downloadFile)
+        self.ui.pushButton_2.clicked.connect(self.deleteFile)
 
     # creating neccesarry functions
-    def add_files(self):
+    def addFile(self):
         files, _ = QFileDialog.getOpenFileNames(self, "Select Files", "", "All Files (*)")
-        for file in files:
-            self.ui.file_list.addItem(file)
-            # Will add the database later
-    def download_files(self):
+        if files:
+            for file in files:
+                filename = os.path.basename(file)
+                dest_path = os.path.join(STORAGE_DIR, filename)
+                shutil.copy(file, dest_path)  # Copy file to storage directory
+                self.ui.file_list.addItem(filename)  # Add filename to UI list
+
+    def downloadFile(self):
         selected_item = self.ui.file_list.currentItem()
         if selected_item:
-            save_path = QFileDialog.getSaveFileName(self, "Save File", "", "All Files (*)")
-            if save_path:
-                self.db.download_file(selected_item.text(), save_path)
-                QMessageBox.information(self, "Success", "File downloaded successfully")
+            file_name = selected_item.text()
+            file_path = os.path.join(STORAGE_DIR, file_name)
+            if os.path.exists(file_path):
+                save_path, _ = QFileDialog.getSaveFileName(self, "Save File As", file_name)
+                if save_path:
+                    worker = Worker(shutil.copy, file_path, save_path)
+                    self.thread_pool.start(worker)  # Run in a separate thread
+                    QMessageBox.information(self, "Download", f"File saved to {save_path}")
+            else:
+                QMessageBox.warning(self, "Error", "File not found in storage.")
         else:
-            QMessageBox.warning(self, "Warning", "No file selected")
-    def delete_files(self):
+            QMessageBox.warning(self, "Warning", "No file selected to download.")
+
+    def deleteFile(self):
         selected_item = self.ui.file_list.currentItem()
         if selected_item:
-            self.db.delete_file(selected_item.text())
-            QMessageBox.information(self, "Success", "File deleted successfully")
+            file_name = selected_item.text()
+            file_path = os.path.join(STORAGE_DIR, file_name)
+            if os.path.exists(file_path):
+                os.remove(file_path)  # Delete file from storage
+            self.ui.file_list.takeItem(self.ui.file_list.row(selected_item))  # Remove from UI
         else:
-            QMessageBox.warning(self, "Warning", "No file selected")
+            QMessageBox.warning(self, "Warning", "No file selected to delete.")
