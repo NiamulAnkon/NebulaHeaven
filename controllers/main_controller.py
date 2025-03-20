@@ -27,6 +27,7 @@ class MainController(QMainWindow, Ui_MainWindow):
         self.ui.setupUi(self)
         self.db = Database()
         self.thread_pool = QThreadPool.globalInstance()
+        self.loadFiles()
 
         # connecting buttons to functions
         self.ui.pushButton.clicked.connect(self.addFile)
@@ -65,4 +66,8 @@ class MainController(QMainWindow, Ui_MainWindow):
             self.ui.file_list.takeItem(self.ui.file_list.row(selected_item))  # Remove from UI
         else:
             QMessageBox.warning(self, "Warning", "No file selected to delete.")
+    def loadFiles(self):
+        files = self.db.get_all_files()  
+        for file in files:
+            self.ui.file_list.addItem(file["filename"])
 

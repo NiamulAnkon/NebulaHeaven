@@ -57,3 +57,6 @@ class Database:
         files = self.collection.find()
         for file in files:
             print(f"- {file['filename']} (ID: {file['file_id']})")
+    def get_all_files(self):
+        """ Get all stored files from the database """
+        return list(self.collection.find({}, {"filename": 1, "_id": 0}))
